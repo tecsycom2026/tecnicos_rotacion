@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rotación de Técnicos</title>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg:         #eef3fb;
+    --surface:    #ffffff;
+    --surface2:   #f5f8ff;
+    --border:     #d5e0f5;
+    --border2:    #b8cce8;
+    --accent:     #1a56db;
+    --accent-lt:  #3b82f6;
+    --accent-bg:  #eff6ff;
+    --text:       #0e1e40;
+    --text-mid:   #34547a;
+    --text-muted: #7a90b4;
+    --today-bg:   #dc2626;
+    --today-text: #ffffff;
+    --tmrw-bg:    #fed7aa;
+    --tmrw-text:  #7c2d12;
+    --danger:     #ef4444;
+    --success:    #16a34a;
+    --warn:       #d97706;
+    --shadow-sm:  0 1px 3px rgba(26,86,219,.08);
+    --shadow:     0 2px 8px rgba(26,86,219,.10), 0 1px 3px rgba(26,86,219,.06);
+    --shadow-md:  0 8px 32px rgba(26,86,219,.14);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Sora', sans-serif; font-size: 13.5px; min-height: 100vh; }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--accent);
+    padding: 0 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px rgba(26,86,219,.35);
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 38px; height: 38px; background: rgba(255,255,255,.15);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; border: 1px solid rgba(255,255,255,.25);
+  }
+  .logo-text h1 { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 700; letter-spacing: 2px; color: #fff; text-transform: uppercase; }
+  .logo-text span { font-size: 10.5px; color: rgba(255,255,255,.65); letter-spacing: .4px; }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+
+  /* sync */
+  .sync-badge {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.22);
+    border-radius: 20px; padding: 4px 12px; margin-right: 6px;
+  }
+  .sync-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: #9ca3af; transition: background .3s; flex-shrink: 0;
+  }
+  .sync-dot.live    { background: #4ade80; box-shadow: 0 0 0 3px rgba(74,222,128,.25); animation: pulse 2s infinite; }
+  .sync-dot.saving  { background: #fbbf24; }
+  .sync-dot.error   { background: #f87171; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.45} }
+  .sync-label { font-size: 11px; color: rgba(255,255,255,.8); font-weight: 500; }
+
+  /* header btns */
+  .hbtn {
+    padding: 7px 14px; border-radius: 7px;
+    border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.13);
+    color: #fff; cursor: pointer; font-size: 12px; font-weight: 600;
+    font-family: 'Sora', sans-serif; transition: all .15s;
+    display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .hbtn:hover { background: rgba(255,255,255,.25); }
+  .hbtn-solid { background: #fff; color: var(--accent); border-color: #fff; }
+  .hbtn-solid:hover { background: var(--accent-bg); color: var(--accent); }
+
+  /* ── TABS ── */
+  .tabs-bar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0 28px; display: flex; align-items: flex-end; gap: 2px;
+    overflow-x: auto; min-height: 44px;
+  }
+  .tab {
+    padding: 10px 18px; cursor: pointer;
+    border-radius: 8px 8px 0 0; border: 1px solid transparent; border-bottom: none;
+    color: var(--text-muted); font-size: 12.5px; font-weight: 500; white-space: nowrap;
+    transition: all .18s; display: flex; align-items: center; gap: 7px;
+    position: relative; top: 1px;
+  }
+  .tab:hover { color: var(--accent); background: var(--accent-bg); }
+  .tab.active { background: var(--bg); border-color: var(--border); color: var(--accent); font-weight: 600; }
+  .tab .close-tab {
+    background: none; border: none; color: var(--text-muted);
+    cursor: pointer; font-size: 15px; padding: 1px 3px; border-radius: 4px; transition: all .15s;
+  }
+  .tab .close-tab:hover { background: var(--danger); color: white; }
+
+  /* ── MAIN ── */
+  .main { padding: 22px 28px; }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px;
+    align-items: center; background: var(--surface); padding: 10px 16px;
+    border-radius: 10px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+  }
+  .toolbar-sep { width: 1px; height: 26px; background: var(--border2); margin: 0 4px; }
+  .legend { margin-left: auto; display: flex; gap: 14px; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-muted); }
+  .legend-dot { width: 11px; height: 11px; border-radius: 3px; }
+  .legend-dot.today { background: var(--today-bg); }
+  .legend-dot.tomorrow { background: var(--tmrw-bg); border: 1px solid #fb923c; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    padding: 7px 13px; border-radius: 7px; border: 1.5px solid var(--border2);
+    background: var(--surface); color: var(--text-mid); cursor: pointer;
+    font-size: 12px; font-weight: 600; font-family: 'Sora', sans-serif;
+    transition: all .15s; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  }
+  .btn:hover { border-color: var(--accent-lt); color: var(--accent); background: var(--accent-bg); }
+  .btn-danger { border-color: #fca5a5; }
+  .btn-danger:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+  /* ── TABLE ── */
+  .table-wrap { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); background: var(--surface); }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  thead tr { background: #1e3a8a; }
+  th {
+    padding: 12px 16px; text-align: left; font-size: 11px;
+    font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase;
+    color: rgba(255,255,255,.8);
+  }
+  th:last-child { width: 130px; text-align: center; }
+
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; cursor: pointer; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover:not(.today-row):not(.tomorrow-row) { background: var(--accent-bg); }
+  tbody tr.selected { outline: 2px solid var(--accent-lt) inset; }
+
+  tbody tr.today-row > td:not(.act-cell) { background: var(--today-bg) !important; color: var(--today-text) !important; }
+  tbody tr.today-row > td:not(.act-cell) select,
+  tbody tr.today-row > td:not(.act-cell) input {
+    background: rgba(255,255,255,.18) !important; color: white !important; border-color: rgba(255,255,255,.35) !important;
+  }
+  tbody tr.tomorrow-row > td:not(.act-cell) { background: var(--tmrw-bg) !important; color: var(--tmrw-text) !important; }
+  tbody tr.tomorrow-row > td:not(.act-cell) select,
+  tbody tr.tomorrow-row > td:not(.act-cell) input {
+    background: rgba(255,255,255,.5) !important; color: var(--tmrw-text) !important; border-color: rgba(124,45,18,.2) !important;
+  }
+
+  td { padding: 7px 16px; }
+  td input[type="date"], td input[type="text"], td select {
+    background: transparent; border: 1.5px solid transparent; color: inherit;
+    font-family: 'Sora', sans-serif; font-size: 13px; padding: 4px 8px;
+    border-radius: 5px; width: 100%; outline: none; transition: border-color .15s, background .15s;
+  }
+  td input:focus, td select:focus { border-color: var(--accent-lt); background: var(--accent-bg); }
+  td input:hover, td select:hover { border-color: var(--border2); }
+  td select option { background: white; color: var(--text); }
+
+  .act-cell { text-align: center; white-space: nowrap; }
+  .row-btn {
+    background: none; border: 1.5px solid transparent; color: var(--text-muted);
+    cursor: pointer; font-size: 13px; padding: 3px 6px; border-radius: 5px; transition: all .15s;
+  }
+  .row-btn:hover { border-color: currentColor; }
+  .row-btn.del:hover   { color: var(--danger); }
+  .row-btn.dup:hover   { color: var(--success); }
+  .row-btn.ins-a:hover { color: var(--accent); }
+  .row-btn.ins-b:hover { color: var(--warn); }
+
+  /* ── PAGE INFO ── */
+  .page-info { margin-top: 10px; font-size: 11.5px; color: var(--text-muted); }
+
+  /* ── MODAL ── */
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(14,30,64,.45); backdrop-filter: blur(4px);
+    z-index: 300; align-items: center; justify-content: center;
+  }
+  .overlay.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 30px 28px; width: 500px; max-width: 96vw; max-height: 92vh;
+    overflow-y: auto; box-shadow: var(--shadow-md); animation: slideUp .22s ease;
+  }
+  @keyframes slideUp { from{transform:translateY(16px);opacity:0} to{transform:translateY(0);opacity:1} }
+  .modal-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+  }
+  .modal-header h2 {
+    font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700;
+    letter-spacing: 1px; color: var(--accent); text-transform: uppercase;
+  }
+  .form-group { margin-bottom: 16px; }
+  .form-group label {
+    display: block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px;
+  }
+  .form-group input {
+    width: 100%; background: var(--surface2); border: 1.5px solid var(--border2);
+    color: var(--text); padding: 9px 12px; border-radius: 7px;
+    font-family: 'Sora', sans-serif; font-size: 13px; outline: none; transition: border-color .15s;
+  }
+  .form-group input:focus { border-color: var(--accent-lt); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+  /* ── TECH LIST ── */
+  .tech-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    max-height: 380px; overflow-y: auto; padding-right: 4px; margin-bottom: 14px;
+  }
+  .tech-item {
+    background: var(--surface2); border: 1.5px solid var(--border); border-radius: 7px;
+    padding: 9px 12px; display: flex; align-items: center; gap: 8px; transition: border-color .15s;
+  }
+  .tech-item:hover { border-color: var(--accent-lt); }
+  .tech-name-input {
+    background: transparent; border: none; color: var(--text); font-family: 'Sora', sans-serif;
+    font-size: 12.5px; font-weight: 500; outline: none; flex: 1; min-width: 0;
+  }
+  .tech-name-input:focus { background: white; border-radius: 3px; padding: 2px 5px; }
+
+  /* ── LOADER ── */
+  .loader { display: flex; align-items: center; justify-content: center; padding: 48px; gap: 12px; color: var(--text-muted); font-size: 13px; }
+  .spinner { width: 22px; height: 22px; border: 2.5px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── TOAST ── */
+  #toastArea { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 999; }
+  .toast {
+    background: var(--text); color: white; padding: 11px 18px; border-radius: 8px;
+    font-size: 13px; font-weight: 500; box-shadow: var(--shadow-md);
+    animation: fadeIn .25s ease; display: flex; align-items: center; gap: 8px;
+  }
+  .toast.success { background: var(--success); }
+  .toast.error   { background: var(--danger); }
+  .toast.info    { background: var(--accent); }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent-lt); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚙️</div>
+    <div class="logo-text">
+      <h1>Rotación de Técnicos</h1>
+      <span>Sistema de gestión de turnos</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="sync-badge">
+      <div class="sync-dot" id="syncDot"></div>
+      <span class="sync-label" id="syncLabel">Conectando...</span>
+    </div>
+    <button class="hbtn" onclick="openTechModal()">👷 Técnicos</button>
+    <button class="hbtn" onclick="openSaveModal()">💾 Guardar mes</button>
+    <button class="hbtn" onclick="exportCSV()">📤 Exportar</button>
+    <button class="hbtn hbtn-solid" onclick="addNewSheet()">+ Nueva hoja</button>
+  </div>
+</header>
+
+<div class="tabs-bar" id="tabsBar"></div>
+
+<div class="main">
+  <div class="toolbar">
+    <button class="btn" onclick="insertRowAbove()">⬆ Insertar arriba</button>
+    <button class="btn" onclick="insertRowBelow()">⬇ Insertar abajo</button>
+    <button class="btn" onclick="duplicateRow()">⧉ Duplicar fila</button>
+    <div class="toolbar-sep"></div>
+    <button class="btn btn-danger" onclick="deleteSelectedRow()">🗑 Eliminar fila</button>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot today"></div> Hoy</div>
+      <div class="legend-item"><div class="legend-dot tomorrow"></div> Mañana</div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:230px">Técnico</th>
+          <th style="width:160px">Fecha</th>
+          <th>Observaciones</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="rotBody">
+        <tr><td colspan="4"><div class="loader"><div class="spinner"></div> Cargando datos...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="page-info" id="pageInfo"></div>
+</div>
+
+<!-- SAVE MODAL -->
+<div class="overlay" id="saveModal">
+  <div class="modal">
+    <div class="modal-header"><span style="font-size:22px">💾</span><h2>Guardar hoja del mes</h2></div>
+    <div class="form-group">
+      <label>Nombre de la hoja</label>
+      <input type="text" id="sheetNameInput" placeholder="Ej: Rotacion_Abril">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeSaveModal()">Cancelar</button>
+      <button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent);" onclick="saveSheet()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- TECH MODAL -->
+<div class="overlay" id="techModal">
+  <div class="modal">
+    <div class="modal-header"><span style="font-size:22px">👷</span><h2>Gestión de Técnicos</h2></div>
+    <div class="tech-grid" id="techList"></div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="text" id="newTechInput" placeholder="Nombre del nuevo técnico..."
+        style="flex:1;background:var(--surface2);border:1.5px solid var(--border2);color:var(--text);padding:8px 12px;border-radius:7px;font-family:'Sora',sans-serif;outline:none;"
+        onkeydown="if(event.key==='Enter')addTechnician()">
+      <button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent);" onclick="addTechnician()">+ Agregar</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" style="background:var(--accent);color:#fff;border-color:var(--accent);" onclick="closeTechModal()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toastArea"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  SUPABASE
+// ══════════════════════════════════════════════
+const SUPABASE_URL = 'https://jxpeztieqwotfgswhzhx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4cGV6dGllcXdvdGZnc3doemh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4MzQ4MDQsImV4cCI6MjA4NjQxMDgwNH0.Hf-lbGlP2OmH7Uh2LNKqwHkwHDp7yQV6O73aXw5NCZk';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ══════════════════════════════════════════════
+//  CONSTANTS
+// ══════════════════════════════════════════════
+const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const TODAY    = fmt(new Date());
+const TOMORROW = fmt(new Date(Date.now() + 86400000));
+const DEFAULT_DATE = '2025-03-31';
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+let technicians = [];
+let sheets      = {};
+let activeSheet = '';
+let selectedIdx = -1;
+let realtimeCh  = null;
+let isSyncing   = false;
+
+// ══════════════════════════════════════════════
+//  SYNC STATUS
+// ══════════════════════════════════════════════
+function setSyncStatus(status, label) {
+  document.getElementById('syncDot').className = 'sync-dot ' + status;
+  document.getElementById('syncLabel').textContent = label;
+}
+
+// ══════════════════════════════════════════════
+//  LOAD ALL
+// ══════════════════════════════════════════════
+async function loadAll() {
+  setSyncStatus('saving', 'Cargando...');
+
+  // Check tables exist
+  const { error: chk } = await sb.from('technicians_rot').select('id').limit(1);
+  if (chk && chk.code === '42P01') {
+    setSyncStatus('error', 'Tablas no creadas');
+    showSQLInstructions();
+    return;
+  }
+
+  // Load technicians
+  const { data: techs } = await sb.from('technicians_rot').select('*').order('name');
+  if (techs && techs.length > 0) {
+    technicians = techs.map(t => t.name);
+  } else {
+    const defaults = [
+      'JOSEP FABIAN','YENSIS GONZALEZ','ANDERSON LANDAETA','CARLOS ALBAN',
+      'EFRAIN TITO','OMAR PALOMINO','JONY STUAR','WIDNE PEREZ',
+      'FERNANDO FALCON','ALEXANDER AGUILAR','JOEL MANUEL','EDISON PAGAN',
+      'MARTIN VASQUEZ','MARCO VALENCIA','DONATO PEREZ','JHONATHAN CAMACHO',
+      'BRIAM POMZONGO','JOSE CENTURION','ALAN BERNILLA'
+    ];
+    await sb.from('technicians_rot').insert(defaults.map(n => ({ name: n })));
+    technicians = defaults;
+  }
+
+  // Load rotation rows
+  const { data: rows, error: re } = await sb.from('rotation_rows').select('*').order('sort_order').order('id');
+  if (re) { setSyncStatus('error', 'Error al cargar'); console.error(re); return; }
+
+  sheets = {};
+  if (rows && rows.length > 0) {
+    rows.forEach(r => {
+      if (!sheets[r.sheet_name]) sheets[r.sheet_name] = [];
+      sheets[r.sheet_name].push(r);
+    });
+  }
+
+  if (Object.keys(sheets).length === 0) {
+    const name = `Rotacion_${monthName(new Date())}`;
+    const nr = await insertRowDB({ sheet_name: name, tech: technicians[0], date: DEFAULT_DATE, obs: '', sort_order: 0 });
+    if (nr) sheets[name] = [nr];
+  }
+
+  if (!activeSheet || !sheets[activeSheet]) activeSheet = Object.keys(sheets)[0];
+
+  setupRealtime();
+  renderTabs();
+  renderTable();
+  setSyncStatus('live', 'En vivo');
+}
+
+function showSQLInstructions() {
+  document.getElementById('rotBody').innerHTML = `
+    <tr><td colspan="4" style="padding:28px;">
+      <div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:20px;">
+        <strong style="color:#92400e;">⚠ Crea las tablas en Supabase SQL Editor:</strong>
+        <pre style="margin-top:12px;font-size:11px;color:#1e293b;background:#fff;padding:14px;border-radius:6px;overflow-x:auto;">
+create table if not exists technicians_rot (
+  id bigserial primary key,
+  name text not null unique
+);
+
+create table if not exists rotation_rows (
+  id bigserial primary key,
+  sheet_name text not null,
+  tech text not null,
+  date date,
+  obs text default '',
+  sort_order int default 0,
+  created_at timestamptz default now()
+);
+
+alter publication supabase_realtime add table rotation_rows;
+alter publication supabase_realtime add table technicians_rot;</pre>
+        <button class="btn" style="margin-top:12px;" onclick="loadAll()">🔄 Reintentar</button>
+      </div>
+    </td></tr>`;
+}
+
+// ══════════════════════════════════════════════
+//  REALTIME
+// ══════════════════════════════════════════════
+function setupRealtime() {
+  if (realtimeCh) sb.removeChannel(realtimeCh);
+  realtimeCh = sb.channel('rot-live')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'rotation_rows' }, async () => {
+      if (isSyncing) return;
+      setSyncStatus('saving', 'Actualizando...');
+      await reloadRows();
+      setSyncStatus('live', 'En vivo');
+      showToast('🔄 Actualizado en tiempo real', 'info');
+    })
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'technicians_rot' }, async () => {
+      const { data } = await sb.from('technicians_rot').select('*').order('name');
+      if (data) technicians = data.map(t => t.name);
+      renderTable();
+    })
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED')    setSyncStatus('live', 'En vivo');
+      if (status === 'CHANNEL_ERROR') setSyncStatus('error', 'Sin conexión');
+    });
+}
+
+async function reloadRows() {
+  const { data: rows } = await sb.from('rotation_rows').select('*').order('sort_order').order('id');
+  if (!rows) return;
+  const prev = activeSheet;
+  sheets = {};
+  rows.forEach(r => {
+    if (!sheets[r.sheet_name]) sheets[r.sheet_name] = [];
+    sheets[r.sheet_name].push(r);
+  });
+  if (sheets[prev]) activeSheet = prev;
+  else if (Object.keys(sheets).length) activeSheet = Object.keys(sheets)[0];
+  renderTabs(); renderTable();
+}
+
+// ══════════════════════════════════════════════
+//  DB HELPERS
+// ══════════════════════════════════════════════
+async function insertRowDB(row) {
+  isSyncing = true;
+  const { data, error } = await sb.from('rotation_rows').insert([row]).select().single();
+  isSyncing = false;
+  if (error) { showToast('Error: ' + error.message, 'error'); return null; }
+  return data;
+}
+async function updateRowDB(id, fields) {
+  isSyncing = true;
+  const { error } = await sb.from('rotation_rows').update(fields).eq('id', id);
+  isSyncing = false;
+  if (error) showToast('Error: ' + error.message, 'error');
+}
+async function deleteRowDB(id) {
+  isSyncing = true;
+  await sb.from('rotation_rows').delete().eq('id', id);
+  isSyncing = false;
+}
+async function reorderSheet(rows) {
+  isSyncing = true;
+  for (let i = 0; i < rows.length; i++) {
+    await sb.from('rotation_rows').update({ sort_order: i }).eq('id', rows[i].id);
+  }
+  isSyncing = false;
+}
+
+// ══════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════
+const monthName = d => ['Enero','Febrero','Marzo','Abril','Mayo','Junio',
+  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][d.getMonth()];
+const escQ = s => s.replace(/'/g,"\\'");
+
+// ══════════════════════════════════════════════
+//  TABS
+// ══════════════════════════════════════════════
+function renderTabs() {
+  const bar = document.getElementById('tabsBar');
+  bar.innerHTML = '';
+  Object.keys(sheets).forEach(name => {
+    const tab = document.createElement('div');
+    tab.className = 'tab' + (name === activeSheet ? ' active' : '');
+    tab.innerHTML = `<span onclick="switchTab('${escQ(name)}')">${name}</span>
+      <button class="close-tab" title="Cerrar" onclick="removeSheet('${escQ(name)}')">×</button>`;
+    bar.appendChild(tab);
+  });
+}
+
+function switchTab(name) { activeSheet = name; selectedIdx = -1; renderTabs(); renderTable(); }
+
+function addNewSheet() {
+  const base = `Rotacion_${monthName(new Date())}`;
+  let name = base, i = 2;
+  while (sheets[name]) name = `${base}_${i++}`;
+  sheets[name] = [];
+  activeSheet = name;
+  renderTabs();
+  insertRowBelow();
+}
+
+async function removeSheet(name) {
+  if (Object.keys(sheets).length <= 1) { showToast('Debe haber al menos una hoja.', 'error'); return; }
+  if (!confirm(`¿Eliminar hoja "${name}"?`)) return;
+  for (const r of (sheets[name]||[])) await deleteRowDB(r.id);
+  delete sheets[name];
+  activeSheet = Object.keys(sheets)[0];
+  renderTabs(); renderTable();
+  showToast(`Hoja eliminada`, 'info');
+}
+
+// ══════════════════════════════════════════════
+//  TABLE
+// ══════════════════════════════════════════════
+function renderTable() {
+  const tbody = document.getElementById('rotBody');
+  tbody.innerHTML = '';
+  const rows = sheets[activeSheet] || [];
+
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--text-muted);">Sin filas. Usa "Insertar abajo" para comenzar.</td></tr>`;
+    updateInfo(); return;
+  }
+
+  rows.forEach((row, idx) => {
+    const tr = document.createElement('tr');
+    const d = row.date || '';
+    if (d === TODAY)    tr.classList.add('today-row');
+    else if (d === TOMORROW) tr.classList.add('tomorrow-row');
+    if (idx === selectedIdx) tr.classList.add('selected');
+
+    tr.addEventListener('click', e => {
+      if (['BUTTON','SELECT','INPUT'].includes(e.target.tagName)) return;
+      selectRow(idx);
+    });
+
+    // Técnico
+    const tdT = document.createElement('td');
+    const sel = document.createElement('select');
+    technicians.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t;
+      if (t === row.tech) o.selected = true;
+      sel.appendChild(o);
+    });
+    if (!technicians.includes(row.tech) && row.tech) {
+      const o = document.createElement('option');
+      o.value = row.tech; o.textContent = row.tech; o.selected = true;
+      sel.insertBefore(o, sel.firstChild);
+    }
+    sel.addEventListener('change', async () => { row.tech = sel.value; await updateRowDB(row.id, { tech: sel.value }); });
+    sel.addEventListener('focus', () => selectRow(idx));
+    tdT.appendChild(sel);
+
+    // Fecha
+    const tdD = document.createElement('td');
+    const inp = document.createElement('input');
+    inp.type = 'date'; inp.value = row.date || '';
+    inp.addEventListener('change', async () => {
+      row.date = inp.value;
+      tr.classList.remove('today-row','tomorrow-row');
+      if (inp.value === TODAY) tr.classList.add('today-row');
+      else if (inp.value === TOMORROW) tr.classList.add('tomorrow-row');
+      await updateRowDB(row.id, { date: inp.value });
+    });
+    inp.addEventListener('focus', () => selectRow(idx));
+    tdD.appendChild(inp);
+
+    // Observaciones
+    const tdO = document.createElement('td');
+    const obs = document.createElement('input');
+    obs.type = 'text'; obs.value = row.obs || ''; obs.placeholder = 'Observaciones...';
+    let t2;
+    obs.addEventListener('input', () => {
+      row.obs = obs.value; clearTimeout(t2);
+      t2 = setTimeout(() => updateRowDB(row.id, { obs: obs.value }), 700);
+    });
+    obs.addEventListener('focus', () => selectRow(idx));
+    tdO.appendChild(obs);
+
+    // Acciones
+    const tdA = document.createElement('td');
+    tdA.className = 'act-cell';
+    tdA.innerHTML = `
+      <button class="row-btn ins-a" title="Insertar arriba" onclick="insertAt(${idx})">⬆</button>
+      <button class="row-btn ins-b" title="Insertar abajo"  onclick="insertAt(${idx+1})">⬇</button>
+      <button class="row-btn dup"   title="Duplicar"        onclick="duplicateAt(${idx})">⧉</button>
+      <button class="row-btn del"   title="Eliminar"        onclick="deleteAt(${idx})">✕</button>
+    `;
+
+    tr.append(tdT, tdD, tdO, tdA);
+    tbody.appendChild(tr);
+  });
+  updateInfo();
+}
+
+function selectRow(idx) {
+  selectedIdx = idx;
+  document.querySelectorAll('#rotBody tr').forEach((tr,i) => tr.classList.toggle('selected', i===idx));
+}
+function updateInfo() {
+  const rows = sheets[activeSheet] || [];
+  document.getElementById('pageInfo').textContent = `${rows.length} fila(s) · Hoja activa: ${activeSheet}`;
+}
+
+// ══════════════════════════════════════════════
+//  ROW OPS
+// ══════════════════════════════════════════════
+function getRefDate() {
+  const rows = sheets[activeSheet]; if (!rows) return DEFAULT_DATE;
+  return (selectedIdx >= 0 && rows[selectedIdx]) ? rows[selectedIdx].date || DEFAULT_DATE : DEFAULT_DATE;
+}
+
+async function insertAt(idx) {
+  if (!sheets[activeSheet]) sheets[activeSheet] = [];
+  const rows = sheets[activeSheet];
+  const nr = await insertRowDB({ sheet_name: activeSheet, tech: technicians[0], date: getRefDate(), obs: '', sort_order: idx });
+  if (!nr) return;
+  rows.splice(idx, 0, nr);
+  await reorderSheet(rows);
+  selectedIdx = idx; renderTable();
+}
+
+async function duplicateAt(idx) {
+  const rows = sheets[activeSheet]; const src = rows[idx];
+  const nr = await insertRowDB({ sheet_name: activeSheet, tech: src.tech, date: src.date, obs: src.obs||'', sort_order: idx+1 });
+  if (!nr) return;
+  rows.splice(idx+1, 0, nr);
+  await reorderSheet(rows);
+  selectedIdx = idx+1; renderTable();
+  showToast('Fila duplicada', 'success');
+}
+
+async function deleteAt(idx) {
+  const rows = sheets[activeSheet];
+  if (rows.length <= 1) { showToast('Debe haber al menos una fila.', 'error'); return; }
+  const row = rows.splice(idx, 1)[0];
+  await deleteRowDB(row.id);
+  await reorderSheet(rows);
+  if (selectedIdx >= rows.length) selectedIdx = rows.length - 1;
+  renderTable();
+}
+
+function insertRowAbove() { if (selectedIdx < 0) insertAt(0); else insertAt(selectedIdx); }
+function insertRowBelow() {
+  const rows = sheets[activeSheet] || [];
+  if (selectedIdx < 0) insertAt(rows.length); else insertAt(selectedIdx+1);
+}
+function duplicateRow() {
+  if (selectedIdx < 0) { showToast('Selecciona una fila primero.', 'error'); return; }
+  duplicateAt(selectedIdx);
+}
+function deleteSelectedRow() {
+  if (selectedIdx < 0) { showToast('Selecciona una fila primero.', 'error'); return; }
+  deleteAt(selectedIdx);
+}
+
+// ══════════════════════════════════════════════
+//  SAVE / RENAME
+// ══════════════════════════════════════════════
+function openSaveModal() {
+  document.getElementById('sheetNameInput').value = activeSheet || `Rotacion_${monthName(new Date())}`;
+  document.getElementById('saveModal').classList.add('open');
+}
+function closeSaveModal() { document.getElementById('saveModal').classList.remove('open'); }
+
+async function saveSheet() {
+  let name = document.getElementById('sheetNameInput').value.trim().replace(/\s+/g,'_');
+  if (!name) { showToast('Ingresa un nombre.', 'error'); return; }
+  if (name === activeSheet) { closeSaveModal(); showToast('Ya tienes ese nombre.', 'info'); return; }
+  if (sheets[name] && !confirm(`Ya existe "${name}". ¿Sobreescribir?`)) return;
+  if (sheets[name]) { for (const r of sheets[name]) await deleteRowDB(r.id); delete sheets[name]; }
+  isSyncing = true;
+  await sb.from('rotation_rows').update({ sheet_name: name }).eq('sheet_name', activeSheet);
+  isSyncing = false;
+  const rows = sheets[activeSheet] || [];
+  rows.forEach(r => r.sheet_name = name);
+  sheets[name] = rows; delete sheets[activeSheet]; activeSheet = name;
+  closeSaveModal(); renderTabs(); renderTable();
+  showToast(`Hoja guardada como "${name}"`, 'success');
+}
+
+// ══════════════════════════════════════════════
+//  EXPORT
+// ══════════════════════════════════════════════
+function exportCSV() {
+  const rows = sheets[activeSheet] || [];
+  let csv = 'Técnico,Fecha,Observaciones\n';
+  rows.forEach(r => { const o=(r.obs||'').replace(/"/g,'""'); csv+=`"${r.tech}","${r.date||''}","${o}"\n`; });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
+  a.download = `${activeSheet}.csv`; a.click();
+  showToast('CSV exportado ✓', 'success');
+}
+
+// ══════════════════════════════════════════════
+//  TECHNICIANS
+// ══════════════════════════════════════════════
+function openTechModal() { renderTechList(); document.getElementById('techModal').classList.add('open'); }
+function closeTechModal() { document.getElementById('techModal').classList.remove('open'); renderTable(); }
+
+function renderTechList() {
+  const list = document.getElementById('techList'); list.innerHTML = '';
+  technicians.forEach((t, i) => {
+    const div = document.createElement('div'); div.className = 'tech-item';
+    div.innerHTML = `
+      <input class="tech-name-input" type="text" value="${t}"
+        onblur="renameTech(${i},this.value)" onkeydown="if(event.key==='Enter')this.blur()">
+      <button class="row-btn del" onclick="removeTech(${i})">✕</button>`;
+    list.appendChild(div);
+  });
+}
+
+async function renameTech(idx, val) {
+  val = val.trim().toUpperCase();
+  if (!val || val === technicians[idx]) return;
+  const old = technicians[idx];
+  await sb.from('technicians_rot').update({ name: val }).eq('name', old);
+  technicians[idx] = val; renderTechList();
+}
+
+async function addTechnician() {
+  const inp = document.getElementById('newTechInput');
+  const name = inp.value.trim().toUpperCase();
+  if (!name) return;
+  if (technicians.includes(name)) { showToast('Técnico ya existe.', 'error'); return; }
+  const { error } = await sb.from('technicians_rot').insert([{ name }]);
+  if (error) { showToast('Error: '+error.message, 'error'); return; }
+  technicians.push(name); inp.value = ''; renderTechList();
+  showToast(`${name} agregado`, 'success');
+}
+
+async function removeTech(idx) {
+  if (technicians.length <= 1) { showToast('Debe haber al menos un técnico.', 'error'); return; }
+  if (!confirm(`¿Eliminar a "${technicians[idx]}"?`)) return;
+  const name = technicians[idx];
+  await sb.from('technicians_rot').delete().eq('name', name);
+  technicians.splice(idx, 1); renderTechList();
+}
+
+// ══════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════
+function showToast(msg, type='info', dur=3200) {
+  const area = document.getElementById('toastArea');
+  const t = document.createElement('div'); t.className=`toast ${type}`; t.textContent=msg;
+  area.appendChild(t);
+  setTimeout(()=>{ t.style.cssText='opacity:0;transform:translateY(8px);transition:all .3s';
+    setTimeout(()=>t.remove(),300); }, dur);
+}
+
+// ══════════════════════════════════════════════
+//  START
+// ══════════════════════════════════════════════
+loadAll();
+</script>
+</body>
+</html>
