@@ -426,7 +426,7 @@ async function loadAll() {
   }
 
   // Load technicians
-  const { data: techs } = await sb.from('technicians_rot').select('*').order('name');
+  const { data: techs } = await sb.from('technicians_rot').select('*').order('sort_order', { ascending: true }).order('id', { ascending: true });
   if (techs && techs.length > 0) {
     technicians = techs.map(t => t.name);
   } else {
@@ -437,7 +437,7 @@ async function loadAll() {
       'MARTIN VASQUEZ','MARCO VALENCIA','DONATO PEREZ','JHONATHAN CAMACHO',
       'BRIAM POMZONGO','JOSE CENTURION','ALAN BERNILLA'
     ];
-    await sb.from('technicians_rot').insert(defaults.map(n => ({ name: n })));
+    await sb.from('technicians_rot').insert(defaults.map((n, i) => ({ name: n, sort_order: i })));
     technicians = defaults;
   }
 
@@ -475,8 +475,17 @@ function showSQLInstructions() {
         <pre style="margin-top:12px;font-size:11px;color:#1e293b;background:#fff;padding:14px;border-radius:6px;overflow-x:auto;">
 create table if not exists technicians_rot (
   id bigserial primary key,
-  name text not null unique
+  name text not null unique,
+  sort_order int default 0
 );
+
+-- If table already exists, add sort_order column:
+alter table technicians_rot add column if not exists sort_order int default 0;
+
+-- Fix existing technicians order (run this if ya tenias datos):
+update technicians_rot set sort_order = subq.rn from (
+  select id, row_number() over (order by id) - 1 as rn from technicians_rot
+) subq where technicians_rot.id = subq.id;
 
 create table if not exists rotation_rows (
   id bigserial primary key,
@@ -509,7 +518,7 @@ function setupRealtime() {
       showToast('🔄 Actualizado en tiempo real', 'info');
     })
     .on('postgres_changes', { event: '*', schema: 'public', table: 'technicians_rot' }, async () => {
-      const { data } = await sb.from('technicians_rot').select('*').order('name');
+      const { data } = await sb.from('technicians_rot').select('*').order('sort_order', { ascending: true }).order('id', { ascending: true });
       if (data) technicians = data.map(t => t.name);
       renderTable();
     })
@@ -821,7 +830,7 @@ async function addTechnician() {
   const name = inp.value.trim().toUpperCase();
   if (!name) return;
   if (technicians.includes(name)) { showToast('Técnico ya existe.', 'error'); return; }
-  const { error } = await sb.from('technicians_rot').insert([{ name }]);
+  const { error } = await sb.from('technicians_rot').insert([{ name, sort_order: technicians.length }]);
   if (error) { showToast('Error: '+error.message, 'error'); return; }
   technicians.push(name); inp.value = ''; renderTechList();
   showToast(`${name} agregado`, 'success');
